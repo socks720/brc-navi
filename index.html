@@ -7,14 +7,18 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BRC 라이딩">
-  <title>BRC | 코스 보관함 v3</title>
+  <title>BRC | 코스 보관함 v3.1</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%2310243a'/%3E%3Ctext x='32' y='40' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='21' fill='%23ffcb64'%3EBRC%3C/text%3E%3C/svg%3E">
   <style>
     :root {font-family: -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; color-scheme:dark; --bg:#0c1724; --panel:#182b3d; --panel2:#20364b; --line:#37516a; --ink:#f1f7fc; --muted:#b0c6d7; --gold:#ffca62; --sky:#a5ddff;}
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
     body{margin:0;min-height:100dvh;background:linear-gradient(165deg,#193047,#0b1522 65%);color:var(--ink)}
-    main{max-width:720px;margin:0 auto;padding:20px 16px calc(52px + env(safe-area-inset-bottom));}
+    /* iPhone 홈 화면 실행(standalone)에서도 노치/다이내믹 아일랜드 영역을 피해 시작. */
+    main{max-width:720px;margin:0 auto;padding:20px 16px calc(52px + env(safe-area-inset-bottom));padding-top:calc(20px + env(safe-area-inset-top, 0px));}
+    /* 일부 iOS 환경에서는 safe-area-inset-top이 0으로 보고될 수 있어 추가 안전 여백 확보. */
+    @media (display-mode: standalone){main{padding-top:max(92px, calc(20px + env(safe-area-inset-top, 0px)));}}
+    html.brc-standalone main{padding-top:max(92px, calc(20px + env(safe-area-inset-top, 0px)));}
     header{display:flex;align-items:center;gap:12px;margin:6px 0 24px}
     .logo{display:grid;place-items:center;width:52px;height:52px;border-radius:15px;background:var(--gold);color:#172230;font-size:16px;font-weight:900;letter-spacing:-.07em;flex:none}
     header h1{font-size:23px;line-height:1.2;margin:0 0 3px;letter-spacing:-.055em}
@@ -81,6 +85,12 @@
     #toast{position:fixed;bottom:calc(15px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:10;width:min(90vw,440px);padding:13px 16px;color:#101f2b;background:#ffcf74;border-radius:12px;font-size:13px;font-weight:750;box-shadow:0 7px 30px #0009;text-align:center;}
     @media(max-width:370px){h2{font-size:19px}.panel{padding:15px}header h1{font-size:21px}}
   </style>
+  <script>
+    // iOS 구형 홈 화면 웹 앱도 full-screen 표시를 판별해 안전 여백을 적용.
+    if (window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
+      document.documentElement.classList.add('brc-standalone');
+    }
+  </script>
   <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.8.4/kakao.min.js" integrity="sha384-BGX7Wb16GmRFagri4bLJV2DgipVZaU2AI812GZtHtHzzDQJnfHasDXN5houxv45w" crossorigin="anonymous"></script>
 </head>
 <body>
@@ -140,6 +150,7 @@
   </section>
   <section id="view-detail" hidden></section>
   <p class="foot"><strong>라이딩 안전:</strong> BRC는 장소 좌표를 카카오내비에 전달하는 도구야. 기존 코스의 실제 도로선, 편의점 진출입, 고속도로·자동차전용도로 제외는 자동 검증하지 못해. 주행 전 반드시 카카오내비의 이륜차 경로 미리보기를 확인해. 주행 중 화면 조작은 하지 마.</p>
+  <p class="tiny" style="text-align:right;opacity:.65;margin-top:10px">BRC v3.1 · iPhone 상단 안전 영역 개선</p>
 </main>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>
