@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BRC 라이딩">
-  <title>BRC | 코스 보관함 v4.0</title>
+  <title>BRC | 코스 보관함 v4.1</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%2310243a'/%3E%3Ctext x='32' y='40' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='21' fill='%23ffcb64'%3EBRC%3C/text%3E%3C/svg%3E">
   <style>
     :root {font-family: -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; color-scheme:dark; --bg:#0c1724; --panel:#182b3d; --panel2:#20364b; --line:#37516a; --ink:#f1f7fc; --muted:#b0c6d7; --gold:#ffca62; --sky:#a5ddff;}
@@ -141,7 +141,7 @@
         <select id="course-folder" aria-label="코스를 저장할 폴더"></select>
         <label for="route-link">전체 코스 BRC 링크 <span style="color:#ffca62">(권장)</span></label>
         <textarea id="route-link" rows="3" placeholder="https://socks720.github.io/brc-navi/?t=...&p=...&p=...&#38;p=..."></textarea>
-        <div class="hint">링크를 열고 ‘보관함에 저장’을 눌러도 돼. 링크 1개에 최대 60개의 경유·도착 지점을 담을 수 있어.</div>
+        <div class="hint">링크를 열고 ‘보관함에 저장’을 눌러도 돼. 새 p= 통합 링크와 예전 v= 경유지 링크 모두 최대 60개 지점까지 자동 분할해.</div>
         <details class="legacy-input">
           <summary>또는 장소와 좌표를 직접 입력 / 이전 구간 링크 사용</summary>
           <label for="route-points">경유지·도착지 순서 (한 줄에 한 곳)</label>
@@ -167,7 +167,7 @@ CU 예시점·경기도 ...@127.23456,37.23456
   </section>
   <section id="view-detail" hidden></section>
   <p class="foot"><strong>라이딩 안전:</strong> BRC는 장소 좌표를 카카오내비에 전달하는 도구야. 기존 코스의 실제 도로선, 편의점 진출입, 고속도로·자동차전용도로 제외는 자동 검증하지 못해. 주행 전 반드시 카카오내비의 이륜차 경로 미리보기를 확인해. 주행 중 화면 조작은 하지 마.</p>
-  <p class="tiny" style="text-align:right;opacity:.65;margin-top:10px">BRC v4.0 · 경유지 자동 분할 · iPhone 안전 영역 적용</p>
+  <p class="tiny" style="text-align:right;opacity:.65;margin-top:10px">BRC v4.1 · 경유지 자동 분할 · iPhone 안전 영역 적용</p>
 </main>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>
@@ -227,7 +227,10 @@ CU 예시점·경기도 ...@127.23456,37.23456
     if(u.protocol!=='https:' || u.hostname!=='socks720.github.io' || !u.pathname.startsWith('/brc-navi')) throw Error('BRC 주소(socks720.github.io/brc-navi/)인지 확인해줘.');
     const q=u.searchParams;
     if(!q.has('d'))throw Error('BRC 링크에 목적지(d)가 없어.');
-    const vias=q.getAll('v'); if(vias.length>3)throw Error('경유지는 한 구간 최대 3개까지만 지원해.');
+    // 구형 링크(?v=...&v=...&d=...)도 3개를 넘으면 통합 코스로 읽는다.
+    // 카카오내비 SDK 제한(구간당 경유지 3개)은 이후 자동 분할 단계에서만 적용한다.
+    const vias=q.getAll('v');
+    if(vias.length+1>MAX_STOPS)throw Error('한 코스의 경유·도착 지점은 최대 60개야.');
     const title=(q.get('t')||'라이딩 구간').trim().slice(0,100);
     return {name:title,dest:regionPoint(q.get('d')),vias:vias.map(regionPoint),mapUrl:mapURL(q.get('map'))};
   }
@@ -270,7 +273,10 @@ CU 예시점·경기도 ...@127.23456,37.23456
     }
     if(u.searchParams.getAll('p').length)return parseFullRouteLink(value);
     const one=parseRouteLink(value);
-    return {title:one.name,segments:[one],mapUrl:one.mapUrl};
+    // 과거의 d/v 링크가 경유지 4개 이상이어도 한 코스로 불러오고
+    // 각 카카오내비 실행은 경유지 3개 + 목적지 1개씩 자동 분할한다.
+    const segments=one.vias.length<=3 ? [one] : splitIntoSegments([...one.vias,one.dest]);
+    return {title:one.name.slice(0,90),segments,mapUrl:one.mapUrl};
   }
   function checkPoint(p){return p && typeof p.name==='string' && p.name.trim().length>0 && p.name.length<=240 && typeof p.x==='number' && typeof p.y==='number' && Number.isFinite(p.x) && Number.isFinite(p.y) && p.x>=123 && p.x<=133 && p.y>=32 && p.y<=40;}
   function checkSegment(s){return s && typeof s.name==='string' && s.name.length<=100 && checkPoint(s.dest) && Array.isArray(s.vias) && s.vias.length<=3 && s.vias.every(checkPoint) && (s.mapUrl==='' || !!mapURL(s.mapUrl));}
@@ -494,8 +500,10 @@ CU 예시점·경기도 ...@127.23456,37.23456
       if(full){data=parseImportLink(full);}
       else if(points){data={title:'라이딩 대순환',segments:splitIntoSegments(pointsFromLines(points)),mapUrl:''};}
       else {
-        const segments=legacy.map((str,i)=>{try{return parseRouteLink(str);}catch(e){throw Error((i+1)+'번째 구간: '+e.message)}});
-        data={title:segments[0].name,segments,mapUrl:segments[0].mapUrl||''};
+        const routes=legacy.map((str,i)=>{try{return parseImportLink(str);}catch(e){throw Error((i+1)+'번째 링크: '+e.message)}});
+        const segments=routes.flatMap(route=>route.segments);
+        if(segments.length>MAX_SEGMENTS)throw Error('자동 분할된 구간이 너무 많아. 코스를 나눠줘.');
+        data={title:routes[0].title,segments,mapUrl:routes.find(r=>r.mapUrl)?.mapUrl||''};
       }
       const rawmap=$('course-map').value.trim();if(rawmap && !mapURL(rawmap))throw Error('전체 지도는 https://map.kakao.com 링크만 지원해.');
       const title=($('course-title').value.trim()||data.title).slice(0,90);
