@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BRC 라이딩">
-  <title>BRC | 코스 보관함 v3.1</title>
+  <title>BRC | 코스 보관함 v4.0</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%2310243a'/%3E%3Ctext x='32' y='40' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='21' fill='%23ffcb64'%3EBRC%3C/text%3E%3C/svg%3E">
   <style>
     :root {font-family: -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; color-scheme:dark; --bg:#0c1724; --panel:#182b3d; --panel2:#20364b; --line:#37516a; --ink:#f1f7fc; --muted:#b0c6d7; --gold:#ffca62; --sky:#a5ddff;}
@@ -76,6 +76,11 @@
     .share-tip{border-left:3px solid var(--gold);padding:10px 13px;background:#2b3543;border-radius:8px;font-size:12px;line-height:1.6;color:#f8e1ac}
     .mini-note{font-size:12px;color:#b7cede;line-height:1.6;margin:5px 0}
     .folder-name{display:inline-block;border:1px solid #506b82;border-radius:20px;padding:3px 9px;color:#d8e6f0;font-size:11px}
+    .legacy-input{border:1px solid #45637a;border-radius:12px;margin:15px 0;padding:12px 13px;background:#14283b}
+    .legacy-input summary{cursor:pointer;font-weight:750;font-size:13px;color:#c5eaff;line-height:1.5}
+    .summary-strip{display:flex;flex-wrap:wrap;gap:7px;margin:9px 0 14px}
+    .summary-strip span{background:#294457;border:1px solid #426781;border-radius:40px;padding:6px 10px;color:#e3f4fd;font-size:12px}
+    .segment-note{font-size:12px;line-height:1.6;color:#b9d1e1;margin:6px 0 7px}
 
     .line{height:1px;background:#41566b;margin:15px 0}
     .external{display:block;text-align:center;padding:13px;border:1px solid #4d708b;border-radius:11px;color:#bde7ff;font-weight:750;text-decoration:none;margin-top:9px;background:#19354c}
@@ -95,7 +100,7 @@
 </head>
 <body>
 <main>
-  <header><div class="logo">BRC</div><div><h1>내 라이딩 코스</h1><div class="sub">폴더별 저장 · 친구와 공유 · 카카오내비 실행</div></div></header>
+  <header><div class="logo">BRC</div><div><h1>내 라이딩 코스</h1><div class="sub">경유지 자동 분할 · 폴더 저장 · 카카오내비 실행</div></div></header>
   <nav class="tabs" aria-label="주요 메뉴">
     <button type="button" id="tab-library" aria-selected="true">내 코스</button>
     <button type="button" id="tab-add" aria-selected="false">+ 코스 추가</button>
@@ -126,19 +131,31 @@
   <section id="view-add" hidden>
     <div class="panel">
       <p class="eyebrow">코스를 만들어도 GitHub 업로드는 필요 없어</p>
-      <h2>링크 붙여넣고 저장</h2>
-      <p class="muted">ChatGPT가 보내준 <b>BRC 구간 링크</b>를 여기에 붙여넣으면 돼. 긴 링크여도 보관함에서는 버튼 하나로 실행돼.</p>
+      <h2>코스 한 번에 저장</h2>
+      <p class="muted">ChatGPT가 보내준 <b>전체 코스 BRC 링크 1개</b>를 붙여넣어. 경유지가 6~10개 이상이어도 BRC가 자동으로 카카오내비용 구간을 나눠줘.</p>
+      <div class="share-tip">예: 경유·도착 지점 8개 → 1구간 4곳 + 2구간 4곳. 각 구간은 카카오내비에 경유지 최대 3곳과 목적지 1곳을 전달해. 주행 중이 아니라 <b>안전하게 정차한 뒤</b> 다음 구간을 실행해.</div>
       <form id="add-form">
         <label for="course-title">코스 이름 (선택)</label>
         <input id="course-title" type="text" maxlength="90" placeholder="예: 양평·여주·이천 대순환">
         <label for="course-folder">저장할 폴더</label>
         <select id="course-folder" aria-label="코스를 저장할 폴더"></select>
-        <label for="segment-1">1구간 BRC 링크 <span style="color:#ffca62">(필수)</span></label>
-        <textarea id="segment-1" rows="2" placeholder="https://socks720.github.io/brc-navi/?t=...&d=...&v=..." required></textarea>
-        <label for="segment-2">2구간 BRC 링크 (있을 때만)</label>
-        <textarea id="segment-2" rows="2" placeholder="없으면 비워둬"></textarea>
-        <label for="segment-3">3구간 BRC 링크 (있을 때만)</label>
-        <textarea id="segment-3" rows="2" placeholder="없으면 비워둬"></textarea>
+        <label for="route-link">전체 코스 BRC 링크 <span style="color:#ffca62">(권장)</span></label>
+        <textarea id="route-link" rows="3" placeholder="https://socks720.github.io/brc-navi/?t=...&p=...&p=...&#38;p=..."></textarea>
+        <div class="hint">링크를 열고 ‘보관함에 저장’을 눌러도 돼. 링크 1개에 최대 60개의 경유·도착 지점을 담을 수 있어.</div>
+        <details class="legacy-input">
+          <summary>또는 장소와 좌표를 직접 입력 / 이전 구간 링크 사용</summary>
+          <label for="route-points">경유지·도착지 순서 (한 줄에 한 곳)</label>
+          <textarea id="route-points" rows="6" placeholder="GS25 예시점·경기도 ...@127.12345,37.12345
+CU 예시점·경기도 ...@127.23456,37.23456
+집(최종 목적지)·경기도 ...@127.34567,37.34567"></textarea>
+          <div class="hint">출발지는 넣지 말고 처음 경유지부터 마지막 귀가 목적지까지 넣어줘. 장소 이름만으로 좌표를 자동 검색하지는 않아. 주소와 좌표가 반드시 일치해야 해.</div>
+          <label for="segment-1">예전 형식 · 1구간 링크</label>
+          <textarea id="segment-1" rows="2" placeholder="기존 링크가 있을 때만"></textarea>
+          <label for="segment-2">예전 형식 · 2구간 링크</label>
+          <textarea id="segment-2" rows="2" placeholder="기존 링크가 있을 때만"></textarea>
+          <label for="segment-3">예전 형식 · 3구간 링크</label>
+          <textarea id="segment-3" rows="2" placeholder="기존 링크가 있을 때만"></textarea>
+        </details>
         <label for="course-map">전체 카카오맵 링크 (선택)</label>
         <textarea id="course-map" rows="2" placeholder="https://map.kakao.com/..."></textarea>
         <label for="course-notes">메모 (선택)</label>
@@ -150,7 +167,7 @@
   </section>
   <section id="view-detail" hidden></section>
   <p class="foot"><strong>라이딩 안전:</strong> BRC는 장소 좌표를 카카오내비에 전달하는 도구야. 기존 코스의 실제 도로선, 편의점 진출입, 고속도로·자동차전용도로 제외는 자동 검증하지 못해. 주행 전 반드시 카카오내비의 이륜차 경로 미리보기를 확인해. 주행 중 화면 조작은 하지 마.</p>
-  <p class="tiny" style="text-align:right;opacity:.65;margin-top:10px">BRC v3.1 · iPhone 상단 안전 영역 개선</p>
+  <p class="tiny" style="text-align:right;opacity:.65;margin-top:10px">BRC v4.0 · 경유지 자동 분할 · iPhone 안전 영역 적용</p>
 </main>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script>
@@ -170,6 +187,9 @@
   let activeFolder = 'all';
 
   const MAX_COURSES = 200;
+  const MAX_STOPS = 60;
+  const MAX_SEGMENTS = 20;
+  const NAV_POINTS_PER_SEGMENT = 4; // 카카오내비: 경유지 최대 3 + 목적지 1
   const $ = id => document.getElementById(id);
   const library = $('view-library'), add = $('view-add'), detail = $('view-detail');
   const courseList = $('course-list'), incoming = $('incoming');
@@ -211,9 +231,50 @@
     const title=(q.get('t')||'라이딩 구간').trim().slice(0,100);
     return {name:title,dest:regionPoint(q.get('d')),vias:vias.map(regionPoint),mapUrl:mapURL(q.get('map'))};
   }
+  // 새 통합 코스 형식: p=지점명@경도,위도 가 여러 번 반복되는 링크.
+  function splitIntoSegments(points) {
+    if(!Array.isArray(points) || points.length<1 || points.length>MAX_STOPS || !points.every(checkPoint)) throw Error('경유·도착 지점은 1~60개, 정확한 지점명과 좌표로 입력해줘.');
+    const result=[];
+    for(let start=0;start<points.length;start+=NAV_POINTS_PER_SEGMENT){
+      const chunk=points.slice(start,start+NAV_POINTS_PER_SEGMENT);
+      const end=chunk[chunk.length-1];
+      result.push({name:end.name+'까지',dest:end,vias:chunk.slice(0,-1),mapUrl:''});
+    }
+    return result;
+  }
+  function parseFullRouteLink(value) {
+    if(typeof value!=='string' || value.trim().length>35000)throw Error('통합 코스 링크가 너무 길어.');
+    let u;try{u=new URL(value.trim());}catch(_){throw Error('올바른 https:// BRC 링크가 아니야.');}
+    if(u.protocol!=='https:'||u.hostname!=='socks720.github.io'||!u.pathname.startsWith('/brc-navi'))throw Error('BRC 링크 주소를 확인해줘.');
+    const q=u.searchParams;const encoded=q.getAll('p');
+    if(!encoded.length)throw Error('통합 코스 링크에 지점(p)이 없어.');
+    if(encoded.length>MAX_STOPS)throw Error('한 코스에서 지점은 최대 60개야.');
+    const points=encoded.map(regionPoint);
+    const rawmap=q.get('map')||'';const map=mapURL(rawmap);
+    if(rawmap&&!map)throw Error('카카오맵 링크 주소가 올바르지 않아.');
+    const title=(q.get('t')||'라이딩 대순환').trim().slice(0,90)||'라이딩 대순환';
+    return {title,mapUrl:map,segments:splitIntoSegments(points)};
+  }
+  function pointsFromLines(value){
+    const rows=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+    if(!rows.length)return [];
+    if(rows.length>MAX_STOPS)throw Error('지점은 최대 60개까지만 입력할 수 있어.');
+    return rows.map((r,i)=>{try{return regionPoint(r);}catch(e){throw Error((i+1)+'번째 지점: '+e.message);}});
+  }
+  function parseImportLink(value) {
+    let u;try{u=new URL(value.trim());}catch(_){throw Error('BRC 링크를 확인해줘.');}
+    if(u.protocol!=='https:'||u.hostname!=='socks720.github.io'||!u.pathname.startsWith('/brc-navi'))throw Error('BRC 주소만 가져올 수 있어.');
+    if(u.hash.startsWith('#brc=')){
+      const shared=decodeSharedValue(u.hash.slice(5));
+      return {title:shared.title,segments:shared.segments,mapUrl:shared.mapUrl};
+    }
+    if(u.searchParams.getAll('p').length)return parseFullRouteLink(value);
+    const one=parseRouteLink(value);
+    return {title:one.name,segments:[one],mapUrl:one.mapUrl};
+  }
   function checkPoint(p){return p && typeof p.name==='string' && p.name.trim().length>0 && p.name.length<=240 && typeof p.x==='number' && typeof p.y==='number' && Number.isFinite(p.x) && Number.isFinite(p.y) && p.x>=123 && p.x<=133 && p.y>=32 && p.y<=40;}
   function checkSegment(s){return s && typeof s.name==='string' && s.name.length<=100 && checkPoint(s.dest) && Array.isArray(s.vias) && s.vias.length<=3 && s.vias.every(checkPoint) && (s.mapUrl==='' || !!mapURL(s.mapUrl));}
-  function checkCourse(c){return c && typeof c.id==='string' && c.id.length<100 && typeof c.title==='string' && !!c.title.trim() && c.title.length<=90 && typeof c.notes==='string' && c.notes.length<=1000 && Array.isArray(c.segments) && c.segments.length>=1 && c.segments.length<=3 && c.segments.every(checkSegment) && (c.mapUrl==='' || !!mapURL(c.mapUrl));}
+  function checkCourse(c){return c && typeof c.id==='string' && c.id.length<100 && typeof c.title==='string' && !!c.title.trim() && c.title.length<=90 && typeof c.notes==='string' && c.notes.length<=1000 && Array.isArray(c.segments) && c.segments.length>=1 && c.segments.length<=MAX_SEGMENTS && c.segments.every(checkSegment) && (c.mapUrl==='' || !!mapURL(c.mapUrl));}
   function validFolder(f){return !!(f && typeof f.id==='string' && /^[a-z0-9-]{1,90}$/.test(f.id) && typeof f.name==='string' && f.name.trim() && f.name.length<=32);}
   function getFolders(){
     try{
@@ -299,8 +360,12 @@
     }catch(e){if(status)status.textContent='실행 실패: '+e.message;else toast('실행 실패: '+e.message);}
   }
   function renderSegments(holder, segments, map) {
+    const count=segments.reduce((n,s)=>n+s.vias.length+1,0);
+    const summary=el('div','summary-strip');summary.append(el('span','',`전체 ${count}개 경유·도착 지점`),el('span','',`자동 구성 ${segments.length}개 구간`));holder.append(summary);
     segments.forEach((s,i)=>{
-      const box=el('div','segment');box.append(el('h3','',`${i+1}구간 · ${s.name}`));addStops(box,s);
+      const box=el('div','segment');box.append(el('h3','',`${i+1}/${segments.length}구간 · ${s.name}`));
+      box.append(el('p','segment-note',i===0?'현재 위치에서 출발해 아래 경유지를 순서대로 지나 목적지까지 안내해.':'앞 구간 목적지에 도착한 뒤, 안전하게 정차해서 다음 구간을 실행해. 카카오내비는 그때 현재 위치에서 다시 출발해.'));
+      addStops(box,s);
       const nav=mkBtn(`${i+1}구간 카카오내비 실행`,'full',()=>navStart(s,stat));box.append(nav);
       const stat=el('p','status');box.append(stat);
       if(s.mapUrl)box.append(linkButton('이 구간 카카오맵 보기',s.mapUrl));
@@ -330,7 +395,7 @@
     return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
   }
   function base64Decode(value){
-    if(!/^[A-Za-z0-9_-]+$/.test(value)||value.length>24000)throw Error('공유 링크가 올바르지 않아.');
+    if(!/^[A-Za-z0-9_-]+$/.test(value)||value.length>55000)throw Error('공유 링크가 올바르지 않아.');
     const str=atob(value.replace(/-/g,'+').replace(/_/g,'/'));
     return JSON.parse(new TextDecoder().decode(Uint8Array.from(str,c=>c.charCodeAt(0))));
   }
@@ -352,21 +417,25 @@
   }
   async function shareCourse(c){
     const url=makeShareLink(c);
-    if(url.length>22000)return toast('공유 주소가 너무 길어. 지점명이나 구간 수를 줄여줘.');
+    if(url.length>50000)return toast('공유 주소가 너무 길어. 지점명을 줄이거나 코스를 나눠줘.');
     const data={title:'BRC · '+c.title,text:c.title+' — 공유 라이딩 코스 (주행 전 이륜차 도로 확인 필요)',url};
     if(navigator.share){try{await navigator.share(data);return;}catch(e){if(e.name==='AbortError')return;}}
     try{if(await copyText(url))toast('공유 링크를 복사했어. 카카오톡에 붙여넣어줘.');else toast('링크 복사가 지원되지 않아.');}
     catch(_){toast('링크 복사에 실패했어.');}
   }
+  function decodeSharedValue(value){
+    const data=base64Decode(value);
+    if(!data || data.v!==1||typeof data.t!=='string'||!data.t.trim()||data.t.length>90||!Array.isArray(data.s)||data.s.length<1||data.s.length>MAX_SEGMENTS)throw Error('공유 코스 구성이 올바르지 않아.');
+    const map=mapURL(data.m||'');if(data.m && !map)throw Error('공유된 지도 주소가 올바르지 않아.');
+    const segs=data.s.map(expandSegment);
+    if(!segs.every(checkSegment))throw Error('공유 코스 경유지 정보가 올바르지 않아.');
+    return {title:data.t,mapUrl:map,segments:segs};
+  }
   function readShared(){
     if(!location.hash.startsWith('#brc='))return false;
     try{
-      const data=base64Decode(location.hash.slice(5));
-      if(!data || data.v!==1||typeof data.t!=='string'||!data.t.trim()||data.t.length>90||!Array.isArray(data.s)||data.s.length<1||data.s.length>3)throw Error('공유 코스 구성이 올바르지 않아.');
-      const map=mapURL(data.m||'');if(data.m && !map)throw Error('공유된 지도 주소가 유효하지 않아.');
-      const segs=data.s.map(expandSegment);
-      if(!segs.every(checkSegment))throw Error('공유 코스 경유지 형식이 올바르지 않아.');
-      const shared={id:uniqueId(),title:data.t,notes:'',mapUrl:map,segments:segs,folderId:'inbox',createdAt:new Date().toISOString()};
+      const data=decodeSharedValue(location.hash.slice(5));
+      const shared={id:uniqueId(),title:data.title,notes:'',mapUrl:data.mapUrl,segments:data.segments,folderId:'inbox',createdAt:new Date().toISOString()};
       const card=el('div','panel');card.append(el('p','eyebrow','친구가 공유한 코스'),el('h2','',shared.title));
       card.append(el('p','muted','보관함에 저장하지 않아도 아래 구간 버튼을 눌러 카카오내비로 실행할 수 있어.'));
       card.append(el('p','share-tip','공유 링크에는 장소 이름과 좌표가 포함돼 있어. 카카오내비가 도로를 재탐색하니 이륜차 통행 가능 여부를 출발 전에 확인해줘.'));
@@ -398,14 +467,15 @@
     const tools=el('div','action-row');tools.append(rename,remove);panel.append(tools);detail.append(panel);show('detail');
   }
   function receiveLink(){
-    if(!new URLSearchParams(location.search).has('d'))return;
+    const params=new URLSearchParams(location.search);
+    if(!params.has('d')&&!params.has('p'))return;
     try {
-      const seg=parseRouteLink(location.href);pending=seg;
-      const card=el('div','panel');card.append(el('p','eyebrow','새로 받은 BRC 코스 링크'),el('h2','',seg.name),el('p','muted','이 링크를 카카오내비로 바로 열거나 보관함에 저장할 수 있어.'));
-      renderSegments(card,[seg],seg.mapUrl);
+      const route=parseImportLink(location.href);pending=route;
+      const card=el('div','panel');card.append(el('p','eyebrow','새로 받은 BRC 코스 링크'),el('h2','',route.title),el('p','muted','한 코스로 저장되며 카카오내비용 구간은 자동 분할돼. 저장하지 않아도 바로 실행할 수 있어.'));
+      renderSegments(card,route.segments,route.mapUrl);
       card.append(mkBtn('이 코스를 보관함에 저장','full alt',()=>{
         if(courses.length>=MAX_COURSES)return toast('코스 저장 상한에 도달했어.');
-        const c={id:uniqueId(),title:seg.name.slice(0,90),notes:'',mapUrl:seg.mapUrl,segments:[seg],folderId:'inbox',createdAt:new Date().toISOString()};
+        const c={id:uniqueId(),title:route.title.slice(0,90),notes:'',mapUrl:route.mapUrl,segments:route.segments,folderId:'inbox',createdAt:new Date().toISOString()};
         if(saveStore([c,...courses])){pending=null;incoming.replaceChildren();incoming.hidden=true;renderFolderChips();renderList();toast('보관함에 저장했어!');try{history.replaceState({},'',location.pathname)}catch(_){}}
       }));
       incoming.replaceChildren(card);incoming.hidden=false;
@@ -414,20 +484,29 @@
   function submitCourse(e){
     e.preventDefault();$('add-status').textContent='';
     try{
-      const raw=[$('segment-1').value,$('segment-2').value,$('segment-3').value].map(s=>s.trim()).filter(Boolean);
-      if(!raw.length)throw Error('1구간 BRC 링크를 넣어줘.');
       if(courses.length>=MAX_COURSES)throw Error('최대 저장 개수에 도달했어.');
-      const segments=raw.map((str,i)=>{try{return parseRouteLink(str);}catch(e){throw Error((i+1)+'번째 입력한 구간: '+e.message)}});
+      const full=$('route-link').value.trim();
+      const points=$('route-points').value.trim();
+      const legacy=[$('segment-1').value,$('segment-2').value,$('segment-3').value].map(s=>s.trim()).filter(Boolean);
+      const inputKinds=Number(!!full)+Number(!!points)+Number(!!legacy.length);
+      if(inputKinds!==1)throw Error('통합 링크 1개, 장소 목록, 예전 구간 링크 중 하나만 입력해줘.');
+      let data;
+      if(full){data=parseImportLink(full);}
+      else if(points){data={title:'라이딩 대순환',segments:splitIntoSegments(pointsFromLines(points)),mapUrl:''};}
+      else {
+        const segments=legacy.map((str,i)=>{try{return parseRouteLink(str);}catch(e){throw Error((i+1)+'번째 구간: '+e.message)}});
+        data={title:segments[0].name,segments,mapUrl:segments[0].mapUrl||''};
+      }
       const rawmap=$('course-map').value.trim();if(rawmap && !mapURL(rawmap))throw Error('전체 지도는 https://map.kakao.com 링크만 지원해.');
-      const title=($('course-title').value.trim()||segments[0].name).slice(0,90);
-      const c={id:uniqueId(),title,notes:$('course-notes').value.trim().slice(0,1000),mapUrl:mapURL(rawmap)||segments[0].mapUrl||'',segments,folderId:$('course-folder').value,createdAt:new Date().toISOString()};
+      const title=($('course-title').value.trim()||data.title).slice(0,90);
+      const c={id:uniqueId(),title,notes:$('course-notes').value.trim().slice(0,1000),mapUrl:mapURL(rawmap)||data.mapUrl||'',segments:data.segments,folderId:$('course-folder').value,createdAt:new Date().toISOString()};
       if(!checkCourse(c))throw Error('코스 정보가 올바르지 않아.');
-      if(saveStore([c,...courses])){$('add-form').reset();renderFolderChips();renderList();show('library');toast('코스를 저장했어. GitHub 재업로드는 필요 없어.');}
+      if(saveStore([c,...courses])){$('add-form').reset();renderFolderChips();renderList();show('library');toast(`${c.segments.length}개 구간으로 자동 저장했어. GitHub 재업로드는 필요 없어.`);}
     }catch(e){$('add-status').textContent=e.message;}
   }
   function backup(){
     try{
-      const obj={app:'BRC',version:3,exportedAt:new Date().toISOString(),folders,courses};
+      const obj={app:'BRC',version:4,exportedAt:new Date().toISOString(),folders,courses};
       const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
       const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='BRC_courses_backup_'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),3000);
       $('backup-status').textContent='백업 파일 저장을 요청했어. 아이폰의 파일 앱/다운로드 목록을 확인해줘.';
@@ -438,9 +517,9 @@
     if(file.size>2*1024*1024)return $('backup-status').textContent='백업 파일은 2MB 이하여야 해.';
     try{
       const raw=JSON.parse(await file.text());
-      if(!raw||raw.app!=='BRC'||![2,3].includes(raw.version)||!Array.isArray(raw.courses)||raw.courses.length>MAX_COURSES||!raw.courses.every(checkCourse))throw Error('BRC v2/v3 백업 파일이 아니거나 내용이 잘못됐어.');
-      const importedFolders=raw.version===3?raw.folders:[];
-      if(raw.version===3 && (!Array.isArray(importedFolders)||importedFolders.length>MAX_FOLDERS||!importedFolders.every(validFolder)))throw Error('폴더 정보가 올바르지 않아.');
+      if(!raw||raw.app!=='BRC'||![2,3,4].includes(raw.version)||!Array.isArray(raw.courses)||raw.courses.length>MAX_COURSES||!raw.courses.every(checkCourse))throw Error('BRC v2~v4 백업 파일이 아니거나 내용이 잘못됐어.');
+      const importedFolders=raw.version>=3?raw.folders:[];
+      if(raw.version>=3 && (!Array.isArray(importedFolders)||importedFolders.length>MAX_FOLDERS||!importedFolders.every(validFolder)))throw Error('폴더 정보가 올바르지 않아.');
       const foldersById=new Map(folders.map(f=>[f.id,f]));
       for(const f of importedFolders){if(!foldersById.has(f.id))foldersById.set(f.id,f);}
       const nextFolders=[...foldersById.values()];if(nextFolders.length>MAX_FOLDERS)throw Error('합칠 폴더가 너무 많아.');
