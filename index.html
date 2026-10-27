@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BRC 라이딩">
-  <title>BRC | 내 라이딩 코스</title>
+  <title>BRC | 코스 보관함 v3</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%2310243a'/%3E%3Ctext x='32' y='40' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='21' fill='%23ffcb64'%3EBRC%3C/text%3E%3C/svg%3E">
   <style>
     :root {font-family: -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; color-scheme:dark; --bg:#0c1724; --panel:#182b3d; --panel2:#20364b; --line:#37516a; --ink:#f1f7fc; --muted:#b0c6d7; --gold:#ffca62; --sky:#a5ddff;}
@@ -59,6 +59,20 @@
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
     .grid2>*{width:100%}
     .section-title{font-size:15px;margin:22px 0 9px;font-weight:850}
+    .folder-heading{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap}
+    .folder-heading h3{margin:0}
+    .folder-chips{display:flex;gap:7px;overflow-x:auto;padding:12px 0 3px;scrollbar-width:thin}
+    .folder-chips button{white-space:nowrap;flex:none;border-radius:30px;min-height:38px;padding:8px 13px;font-size:13px;background:#284357;color:#eff8ff;border:1px solid #46627b}
+    .folder-chips button[aria-pressed=true]{color:#1e2a38;background:var(--gold);border-color:var(--gold)}
+    .folder-mgmt{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+    .folder-line{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0}
+    .folder-line span{flex:1;min-width:0;overflow-wrap:anywhere;font-size:14px}
+    .folder-line button{flex:none}
+    select{display:block;width:100%;border:1px solid #5d7890;background:#0f2131;color:#f3f7fb;border-radius:10px;padding:12px 13px;font:inherit;min-height:44px}
+    .share-tip{border-left:3px solid var(--gold);padding:10px 13px;background:#2b3543;border-radius:8px;font-size:12px;line-height:1.6;color:#f8e1ac}
+    .mini-note{font-size:12px;color:#b7cede;line-height:1.6;margin:5px 0}
+    .folder-name{display:inline-block;border:1px solid #506b82;border-radius:20px;padding:3px 9px;color:#d8e6f0;font-size:11px}
+
     .line{height:1px;background:#41566b;margin:15px 0}
     .external{display:block;text-align:center;padding:13px;border:1px solid #4d708b;border-radius:11px;color:#bde7ff;font-weight:750;text-decoration:none;margin-top:9px;background:#19354c}
     .external[hidden], [hidden]{display:none!important}
@@ -71,13 +85,24 @@
 </head>
 <body>
 <main>
-  <header><div class="logo">BRC</div><div><h1>내 라이딩 코스</h1><div class="sub">저장한 코스를 카카오내비로 바로 실행</div></div></header>
+  <header><div class="logo">BRC</div><div><h1>내 라이딩 코스</h1><div class="sub">폴더별 저장 · 친구와 공유 · 카카오내비 실행</div></div></header>
   <nav class="tabs" aria-label="주요 메뉴">
     <button type="button" id="tab-library" aria-selected="true">내 코스</button>
     <button type="button" id="tab-add" aria-selected="false">+ 코스 추가</button>
   </nav>
   <section id="view-library">
     <div id="incoming" hidden></div>
+    <div class="panel" aria-label="코스 폴더 관리">
+      <div class="folder-heading">
+        <h3>코스 폴더</h3>
+        <div class="action-row" style="flex:none">
+          <button class="ghost small" type="button" id="folder-add">+ 폴더</button>
+          <button class="ghost small" type="button" id="folder-manage">관리</button>
+        </div>
+      </div>
+      <div id="folder-chips" class="folder-chips" role="group" aria-label="폴더별 코스 보기"></div>
+      <div id="folder-manage-panel" class="folder-mgmt" hidden></div>
+    </div>
     <div id="course-list"></div>
     <div class="panel"><h3>보관함 관리</h3><p class="muted">코스는 이 기기의 BRC에 저장돼. 다른 브라우저·기기로 자동 동기화되지는 않아. 정기적으로 백업해줘.</p>
       <div class="grid2" style="margin-top:12px">
@@ -96,6 +121,8 @@
       <form id="add-form">
         <label for="course-title">코스 이름 (선택)</label>
         <input id="course-title" type="text" maxlength="90" placeholder="예: 양평·여주·이천 대순환">
+        <label for="course-folder">저장할 폴더</label>
+        <select id="course-folder" aria-label="코스를 저장할 폴더"></select>
         <label for="segment-1">1구간 BRC 링크 <span style="color:#ffca62">(필수)</span></label>
         <textarea id="segment-1" rows="2" placeholder="https://socks720.github.io/brc-navi/?t=...&d=...&v=..." required></textarea>
         <label for="segment-2">2구간 BRC 링크 (있을 때만)</label>
@@ -120,12 +147,23 @@
   'use strict';
   // Kakao JavaScript 키: 공개 웹페이지용 키만 사용. Admin 키/REST 비밀정보 금지.
   const JAVASCRIPT_KEY = 'f90a30d2e1bb638937cc65b42660704d';
-  const STORE_KEY = 'brc_library_courses_v2';
+  const STORE_KEY = 'brc_library_courses_v3';
+  const LEGACY_KEY = 'brc_library_courses_v2';
+  const FOLDER_KEY = 'brc_library_folders_v3';
+  const DEFAULT_FOLDERS = [
+    {id:'inbox',name:'미분류'},
+    {id:'day',name:'당일 라이딩'},
+    {id:'stay',name:'1박 2일'}
+  ];
+  const MAX_FOLDERS = 40;
+  let activeFolder = 'all';
+
   const MAX_COURSES = 200;
   const $ = id => document.getElementById(id);
   const library = $('view-library'), add = $('view-add'), detail = $('view-detail');
   const courseList = $('course-list'), incoming = $('incoming');
   let courses = [];
+  let folders = [];
   let pending = null;
   let toastTimer = null;
   let sdkError = '';
@@ -165,8 +203,79 @@
   function checkPoint(p){return p && typeof p.name==='string' && p.name.trim().length>0 && p.name.length<=240 && typeof p.x==='number' && typeof p.y==='number' && Number.isFinite(p.x) && Number.isFinite(p.y) && p.x>=123 && p.x<=133 && p.y>=32 && p.y<=40;}
   function checkSegment(s){return s && typeof s.name==='string' && s.name.length<=100 && checkPoint(s.dest) && Array.isArray(s.vias) && s.vias.length<=3 && s.vias.every(checkPoint) && (s.mapUrl==='' || !!mapURL(s.mapUrl));}
   function checkCourse(c){return c && typeof c.id==='string' && c.id.length<100 && typeof c.title==='string' && !!c.title.trim() && c.title.length<=90 && typeof c.notes==='string' && c.notes.length<=1000 && Array.isArray(c.segments) && c.segments.length>=1 && c.segments.length<=3 && c.segments.every(checkSegment) && (c.mapUrl==='' || !!mapURL(c.mapUrl));}
-  function getStore(){try{const arr=JSON.parse(localStorage.getItem(STORE_KEY)||'[]');return Array.isArray(arr)?arr.filter(checkCourse).slice(0,MAX_COURSES):[];}catch(_){return []}}
+  function validFolder(f){return !!(f && typeof f.id==='string' && /^[a-z0-9-]{1,90}$/.test(f.id) && typeof f.name==='string' && f.name.trim() && f.name.length<=32);}
+  function getFolders(){
+    try{
+      const raw=localStorage.getItem(FOLDER_KEY);
+      if(raw!==null){const val=JSON.parse(raw);if(Array.isArray(val)&&val.length<=MAX_FOLDERS&&val.every(validFolder)){
+        const ids=new Set(val.map(f=>f.id));if(ids.size===val.length && ids.has('inbox'))return val;
+      }}
+    }catch(_){}
+    return DEFAULT_FOLDERS.map(x=>({...x}));
+  }
+  function saveFolders(next){
+    if(next.length>MAX_FOLDERS || !next.every(validFolder))return false;
+    try{localStorage.setItem(FOLDER_KEY,JSON.stringify(next));folders=next;return true;}
+    catch(_){toast('폴더 저장에 실패했어. 기기 저장공간을 확인해줘.');return false;}
+  }
+  function getStore(){
+    try{
+      const raw=localStorage.getItem(STORE_KEY);
+      if(raw!==null){const val=JSON.parse(raw);return Array.isArray(val)?val.filter(checkCourse).slice(0,MAX_COURSES).map(c=>({...c,folderId:folders.some(f=>f.id===c.folderId)?c.folderId:'inbox'})):[];}
+      // v2의 저장된 코스를 삭제하지 않고 v3로 한 번만 복사해.
+      const legacy=JSON.parse(localStorage.getItem(LEGACY_KEY)||'[]');
+      const migrated=Array.isArray(legacy)?legacy.filter(checkCourse).slice(0,MAX_COURSES).map(c=>({...c,folderId:'inbox'})):[];
+      localStorage.setItem(STORE_KEY,JSON.stringify(migrated));
+      return migrated;
+    }catch(_){return [];}
+  }
   function saveStore(next){try{localStorage.setItem(STORE_KEY,JSON.stringify(next));courses=next;return true;}catch(_){toast('저장 실패. 브라우저 저장 공간을 확인해줘.');return false;}}
+  function folderName(id){return (folders.find(f=>f.id===id)||folders[0]||{name:'미분류'}).name;}
+  function folderOptions(node, current){
+    node.replaceChildren();for(const f of folders){const option=el('option','',f.name);option.value=f.id;node.append(option);}
+    node.value=folders.some(f=>f.id===current)?current:'inbox';
+  }
+  function renderFolderChips(){
+    const bar=$('folder-chips');bar.replaceChildren();
+    const options=[{id:'all',name:'전체'},...folders];
+    if(activeFolder!=='all'&&!folders.some(f=>f.id===activeFolder))activeFolder='all';
+    for(const f of options){const num=f.id==='all'?courses.length:courses.filter(c=>c.folderId===f.id).length;
+      const chip=mkBtn(f.name+' '+num,'',()=>{activeFolder=f.id;renderFolderChips();renderList();});
+      chip.setAttribute('aria-pressed',String(activeFolder===f.id));bar.append(chip);
+    }
+    folderOptions($('course-folder'),$('course-folder').value||'inbox');
+  }
+  function addFolder(){
+    if(folders.length>=MAX_FOLDERS)return toast('폴더를 더 만들 수 없어.');
+    const name=prompt('새 폴더 이름 (예: 충북 라이딩)');
+    if(name===null)return;const n=name.trim();
+    if(!n||n.length>32)return toast('폴더 이름은 1~32자로 입력해줘.');
+    if(folders.some(f=>f.name===n))return toast('같은 이름의 폴더가 있어.');
+    const f={id:'fld-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8),name:n};
+    if(saveFolders([...folders,f])){activeFolder=f.id;renderFolderChips();renderList();renderFolderManager();toast('폴더를 만들었어.');}
+  }
+  function renderFolderManager(){
+    const box=$('folder-manage-panel');box.replaceChildren();
+    const desc=el('p','mini-note','폴더를 삭제해도 코스는 지워지지 않고 미분류로 이동해.');box.append(desc);
+    folders.forEach(f=>{
+      const row=el('div','folder-line');const count=courses.filter(c=>c.folderId===f.id).length;
+      row.append(el('span','',f.name+' ('+count+')'));
+      if(f.id!=='inbox'){
+        row.append(mkBtn('이름 변경','ghost small',()=>{
+          const value=prompt('새 폴더 이름',f.name);if(value===null)return;const n=value.trim();
+          if(!n||n.length>32||folders.some(g=>g.id!==f.id&&g.name===n))return toast('폴더 이름을 확인해줘.');
+          if(saveFolders(folders.map(g=>g.id===f.id?{...g,name:n}:g))){renderFolderChips();renderList();renderFolderManager();}
+        }));
+        row.append(mkBtn('삭제','danger small',()=>{
+          if(!confirm('"'+f.name+'" 폴더를 삭제할까? 안의 코스는 미분류로 이동해.'))return;
+          const nextCourses=courses.map(c=>c.folderId===f.id?{...c,folderId:'inbox'}:c);
+          if(!saveStore(nextCourses))return;
+          if(saveFolders(folders.filter(g=>g.id!==f.id))){if(activeFolder===f.id)activeFolder='all';renderFolderChips();renderList();renderFolderManager();toast('폴더 삭제 완료. 코스는 유지했어.');}
+        }));
+      }else row.append(el('span','tiny','기본 폴더'));
+      box.append(row);
+    });
+  }
   function uniqueId(){return 'brc-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);}
   function show(view){library.hidden=view!=='library';add.hidden=view!=='add';detail.hidden=view!=='detail';$('tab-library').setAttribute('aria-selected',String(view==='library'||view==='detail'));$('tab-add').setAttribute('aria-selected',String(view==='add'));window.scrollTo(0,0);}
   function addStops(where,s){const ol=el('ol','stops'); s.vias.forEach((p,i)=>{const li=el('li');li.append(el('span','tag','경유 '+(i+1)),el('span','name',p.name));ol.append(li)}); const li=el('li');li.append(el('span','tag','목적지'),el('span','name',s.dest.name));ol.append(li);where.append(ol);}
@@ -190,19 +299,91 @@
   }
   function renderList(){
     courseList.replaceChildren();
-    if(!courses.length){const b=el('div','empty');b.append(el('h2','', '아직 저장한 코스가 없어'),el('p','muted','[+ 코스 추가]에서 BRC 링크를 붙여넣으면 여기에 저장돼.'));b.append(mkBtn('첫 코스 저장하기','full',()=>show('add')));courseList.append(b);return;}
-    const label=el('h2','','저장된 코스 '+courses.length+'개');courseList.append(label);
-    courses.forEach(c=>{
-      const card=el('article','panel course');const top=el('div','course-top');const left=el('div');left.append(el('p','eyebrow','BRC SAVED ROUTE'),el('h3','',c.title));left.append(el('p','muted',c.segments.length+'개 구간 · 기기 내부 저장'));top.append(left,el('span','pill','주행 전 검증'));card.append(top);
-      const row=el('div','action-row');row.append(mkBtn('코스 열기','',()=>renderDetail(c.id)));if(c.mapUrl)row.append(mkBtn('전체 지도','ghost',()=>window.open(c.mapUrl,'_blank','noopener')));card.append(row);courseList.append(card);
+    const visible=activeFolder==='all'?courses:courses.filter(c=>c.folderId===activeFolder);
+    if(!visible.length){const b=el('div','empty');b.append(el('h2','', '아직 저장한 코스가 없어'),el('p','muted','[+ 코스 추가]에서 BRC 링크를 붙여넣으면 여기에 저장돼.'));b.append(mkBtn('첫 코스 저장하기','full',()=>show('add')));courseList.append(b);return;}
+    const label=el('h2','',activeFolder==='all'?'저장된 코스 '+visible.length+'개':folderName(activeFolder)+' · '+visible.length+'개');courseList.append(label);
+    visible.forEach(c=>{
+      const card=el('article','panel course');const top=el('div','course-top');const left=el('div');left.append(el('p','eyebrow','BRC SAVED ROUTE'),el('h3','',c.title));left.append(el('p','muted',c.segments.length+'개 구간 · '+folderName(c.folderId||'inbox')));top.append(left,el('span','pill','주행 전 검증'));card.append(top);
+      const row=el('div','action-row');row.append(mkBtn('코스 열기','',()=>renderDetail(c.id)));if(c.mapUrl)row.append(mkBtn('전체 지도','ghost',()=>window.open(c.mapUrl,'_blank','noopener')));row.append(mkBtn('공유','ghost',()=>shareCourse(c)));row.append(mkBtn('삭제','danger',()=>{if(!confirm('이 코스를 삭제할까? 복구하려면 백업 파일이 필요해.'))return;const next=courses.filter(x=>x.id!==c.id);if(saveStore(next)){renderFolderChips();renderList();toast('코스를 삭제했어.');}}));card.append(row);courseList.append(card);
     });
+  }
+  function compactPoint(p){return [p.name,p.x,p.y];}
+  function compactSegment(s){return [s.name,compactPoint(s.dest),s.vias.map(compactPoint),s.mapUrl||''];}
+  function expandPoint(p){if(!Array.isArray(p)||p.length!==3)return null;return {name:p[0],x:p[1],y:p[2]};}
+  function expandSegment(s){
+    if(!Array.isArray(s)||s.length!==4||!Array.isArray(s[2]))return null;
+    return {name:s[0],dest:expandPoint(s[1]),vias:s[2].map(expandPoint),mapUrl:s[3]};
+  }
+  function base64Encode(obj){
+    const bytes=new TextEncoder().encode(JSON.stringify(obj));let bin='';for(let i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+  function base64Decode(value){
+    if(!/^[A-Za-z0-9_-]+$/.test(value)||value.length>24000)throw Error('공유 링크가 올바르지 않아.');
+    const str=atob(value.replace(/-/g,'+').replace(/_/g,'/'));
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(str,c=>c.charCodeAt(0))));
+  }
+  function makeShareLink(c){
+    // 폴더와 개인 메모는 공유하지 않고, 코스 이름·지도·경유지만 전달.
+    const obj={v:1,t:c.title,m:c.mapUrl||'',s:c.segments.map(compactSegment)};
+    return location.origin+location.pathname+'#brc='+base64Encode(obj);
+  }
+  async function copyText(str){
+    try{await navigator.clipboard.writeText(str);return true;}
+    catch(_){
+      const ta=document.createElement('textarea');ta.value=str;ta.style.position='fixed';ta.style.opacity='0';document.body.append(ta);ta.select();
+      const ok=document.execCommand('copy');ta.remove();return ok;
+    }
+  }
+  async function copyShareLink(c){
+    try{const url=makeShareLink(c);if(await copyText(url))toast('공유 링크를 복사했어. 카카오톡에 붙여넣어줘.');else toast('공유 링크 복사가 실패했어.');}
+    catch(e){toast('링크 복사 실패: '+e.message);}
+  }
+  async function shareCourse(c){
+    const url=makeShareLink(c);
+    if(url.length>22000)return toast('공유 주소가 너무 길어. 지점명이나 구간 수를 줄여줘.');
+    const data={title:'BRC · '+c.title,text:c.title+' — 공유 라이딩 코스 (주행 전 이륜차 도로 확인 필요)',url};
+    if(navigator.share){try{await navigator.share(data);return;}catch(e){if(e.name==='AbortError')return;}}
+    try{if(await copyText(url))toast('공유 링크를 복사했어. 카카오톡에 붙여넣어줘.');else toast('링크 복사가 지원되지 않아.');}
+    catch(_){toast('링크 복사에 실패했어.');}
+  }
+  function readShared(){
+    if(!location.hash.startsWith('#brc='))return false;
+    try{
+      const data=base64Decode(location.hash.slice(5));
+      if(!data || data.v!==1||typeof data.t!=='string'||!data.t.trim()||data.t.length>90||!Array.isArray(data.s)||data.s.length<1||data.s.length>3)throw Error('공유 코스 구성이 올바르지 않아.');
+      const map=mapURL(data.m||'');if(data.m && !map)throw Error('공유된 지도 주소가 유효하지 않아.');
+      const segs=data.s.map(expandSegment);
+      if(!segs.every(checkSegment))throw Error('공유 코스 경유지 형식이 올바르지 않아.');
+      const shared={id:uniqueId(),title:data.t,notes:'',mapUrl:map,segments:segs,folderId:'inbox',createdAt:new Date().toISOString()};
+      const card=el('div','panel');card.append(el('p','eyebrow','친구가 공유한 코스'),el('h2','',shared.title));
+      card.append(el('p','muted','보관함에 저장하지 않아도 아래 구간 버튼을 눌러 카카오내비로 실행할 수 있어.'));
+      card.append(el('p','share-tip','공유 링크에는 장소 이름과 좌표가 포함돼 있어. 카카오내비가 도로를 재탐색하니 이륜차 통행 가능 여부를 출발 전에 확인해줘.'));
+      renderSegments(card,shared.segments,shared.mapUrl);
+      card.append(mkBtn('이 코스를 내 보관함에 저장','full alt',()=>{
+        if(courses.length>=MAX_COURSES)return toast('코스 저장 상한에 도달했어.');
+        const next={...shared,id:uniqueId()};
+        if(saveStore([next,...courses])){incoming.replaceChildren();incoming.hidden=true;renderFolderChips();renderList();toast('내 보관함에 저장했어.');try{history.replaceState({},'',location.pathname)}catch(_){}}
+      }));
+      incoming.replaceChildren(card);incoming.hidden=false;return true;
+    }catch(e){const card=el('div','panel');card.append(el('h3','','공유 코스 열기 실패'),el('p','status',e.message));incoming.replaceChildren(card);incoming.hidden=false;return true;}
   }
   function renderDetail(id){
     const c=courses.find(c=>c.id===id);if(!c){toast('코스가 보관함에 없어.');renderList();show('library');return;}
-    detail.replaceChildren();const panel=el('div','panel');panel.append(mkBtn('← 내 코스로 돌아가기','ghost small',()=>{renderList();show('library')}));panel.append(el('p','eyebrow','저장된 라이딩 코스'));panel.append(el('h2','',c.title));if(c.notes)panel.append(el('p','muted',c.notes));panel.append(el('p','tiny','카카오내비가 실제 도로를 재탐색하므로 카카오맵의 원래 선형과 달라질 수 있어.'));renderSegments(panel,c.segments,c.mapUrl);
+    detail.replaceChildren();const panel=el('div','panel');panel.append(mkBtn('← 내 코스로 돌아가기','ghost small',()=>{renderList();show('library')}));panel.append(el('p','eyebrow','저장된 라이딩 코스'));panel.append(el('h2','',c.title));panel.append(el('span','folder-name',folderName(c.folderId||'inbox')));if(c.notes)panel.append(el('p','muted',c.notes));panel.append(el('p','tiny','카카오내비가 실제 도로를 재탐색하므로 카카오맵의 원래 선형과 달라질 수 있어.'));renderSegments(panel,c.segments,c.mapUrl);
     const line=el('div','line');panel.append(line);
+    panel.append(el('h3','','보관함 관리'));
+    const select=el('select');select.setAttribute('aria-label','코스를 옮길 폴더');folderOptions(select,c.folderId||'inbox');
+    select.addEventListener('change',()=>{
+      const next=courses.map(x=>x.id===c.id?{...x,folderId:select.value}:x);
+      if(saveStore(next)){renderFolderChips();renderDetail(c.id);toast('코스를 '+folderName(select.value)+' 폴더로 옮겼어.');}
+    });
+    panel.append(el('p','mini-note','폴더 이동'));panel.append(select);
+    panel.append(mkBtn('카카오톡·친구에게 코스 전체 공유','full alt',()=>shareCourse(c)));
+    panel.append(mkBtn('공유 링크 복사','full ghost',()=>copyShareLink(c)));
+    panel.append(el('p','mini-note','상대방은 BRC 페이지를 열고 구간별 카카오내비 버튼을 누르면 돼. 별도 가입이나 저장은 필요 없어. 링크에는 도착지·경유지의 위치 좌표가 포함되니 집 주소 등 개인 위치 공유에 주의해.')); 
     const rename=mkBtn('코스 이름 바꾸기','ghost small',()=>{const n=prompt('새 코스 이름',c.title);if(n===null)return;const clean=n.trim().slice(0,90);if(!clean)return toast('코스 이름이 비어 있어.');const next=courses.map(x=>x.id===c.id?{...x,title:clean}:x);if(saveStore(next))renderDetail(c.id)});
-    const remove=mkBtn('코스 삭제','danger small',()=>{if(!confirm('이 코스를 정말 삭제할까? 삭제 후 복구하려면 백업 파일이 필요해.'))return;const next=courses.filter(x=>x.id!==c.id);if(saveStore(next)){renderList();show('library');toast('코스를 삭제했어.')}});
+    const remove=mkBtn('코스 삭제','danger small',()=>{if(!confirm('이 코스를 정말 삭제할까? 삭제 후 복구하려면 백업 파일이 필요해.'))return;const next=courses.filter(x=>x.id!==c.id);if(saveStore(next)){renderFolderChips();renderList();show('library');toast('코스를 삭제했어.')}});
     const tools=el('div','action-row');tools.append(rename,remove);panel.append(tools);detail.append(panel);show('detail');
   }
   function receiveLink(){
@@ -213,8 +394,8 @@
       renderSegments(card,[seg],seg.mapUrl);
       card.append(mkBtn('이 코스를 보관함에 저장','full alt',()=>{
         if(courses.length>=MAX_COURSES)return toast('코스 저장 상한에 도달했어.');
-        const c={id:uniqueId(),title:seg.name.slice(0,90),notes:'',mapUrl:seg.mapUrl,segments:[seg],createdAt:new Date().toISOString()};
-        if(saveStore([c,...courses])){pending=null;incoming.replaceChildren();incoming.hidden=true;renderList();toast('보관함에 저장했어!');try{history.replaceState({},'',location.pathname)}catch(_){}}
+        const c={id:uniqueId(),title:seg.name.slice(0,90),notes:'',mapUrl:seg.mapUrl,segments:[seg],folderId:'inbox',createdAt:new Date().toISOString()};
+        if(saveStore([c,...courses])){pending=null;incoming.replaceChildren();incoming.hidden=true;renderFolderChips();renderList();toast('보관함에 저장했어!');try{history.replaceState({},'',location.pathname)}catch(_){}}
       }));
       incoming.replaceChildren(card);incoming.hidden=false;
     } catch(e){const c=el('div','panel');c.append(el('h3','','링크를 불러오지 못했어'),el('p','status',e.message));incoming.replaceChildren(c);incoming.hidden=false;}
@@ -228,14 +409,14 @@
       const segments=raw.map((str,i)=>{try{return parseRouteLink(str);}catch(e){throw Error((i+1)+'번째 입력한 구간: '+e.message)}});
       const rawmap=$('course-map').value.trim();if(rawmap && !mapURL(rawmap))throw Error('전체 지도는 https://map.kakao.com 링크만 지원해.');
       const title=($('course-title').value.trim()||segments[0].name).slice(0,90);
-      const c={id:uniqueId(),title,notes:$('course-notes').value.trim().slice(0,1000),mapUrl:mapURL(rawmap)||segments[0].mapUrl||'',segments,createdAt:new Date().toISOString()};
+      const c={id:uniqueId(),title,notes:$('course-notes').value.trim().slice(0,1000),mapUrl:mapURL(rawmap)||segments[0].mapUrl||'',segments,folderId:$('course-folder').value,createdAt:new Date().toISOString()};
       if(!checkCourse(c))throw Error('코스 정보가 올바르지 않아.');
-      if(saveStore([c,...courses])){$('add-form').reset();renderList();show('library');toast('코스를 저장했어. GitHub 재업로드는 필요 없어.');}
+      if(saveStore([c,...courses])){$('add-form').reset();renderFolderChips();renderList();show('library');toast('코스를 저장했어. GitHub 재업로드는 필요 없어.');}
     }catch(e){$('add-status').textContent=e.message;}
   }
   function backup(){
     try{
-      const obj={app:'BRC',version:2,exportedAt:new Date().toISOString(),courses};
+      const obj={app:'BRC',version:3,exportedAt:new Date().toISOString(),folders,courses};
       const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
       const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='BRC_courses_backup_'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),3000);
       $('backup-status').textContent='백업 파일 저장을 요청했어. 아이폰의 파일 앱/다운로드 목록을 확인해줘.';
@@ -246,20 +427,29 @@
     if(file.size>2*1024*1024)return $('backup-status').textContent='백업 파일은 2MB 이하여야 해.';
     try{
       const raw=JSON.parse(await file.text());
-      if(!raw||raw.app!=='BRC'||raw.version!==2||!Array.isArray(raw.courses)||raw.courses.length>MAX_COURSES||!raw.courses.every(checkCourse))throw Error('BRC v2 백업 파일이 아니거나 내용이 잘못됐어.');
-      const byId=new Map();for(const c of [...courses,...raw.courses])byId.set(c.id,c);
-      const next=[...byId.values()].slice(0,MAX_COURSES);
-      if(!confirm('백업 코스 '+raw.courses.length+'개를 현재 보관함에 합칠까?'))return;
-      if(saveStore(next)){renderList();$('backup-status').textContent='복원 완료 · 현재 '+courses.length+'개 코스';}
+      if(!raw||raw.app!=='BRC'||![2,3].includes(raw.version)||!Array.isArray(raw.courses)||raw.courses.length>MAX_COURSES||!raw.courses.every(checkCourse))throw Error('BRC v2/v3 백업 파일이 아니거나 내용이 잘못됐어.');
+      const importedFolders=raw.version===3?raw.folders:[];
+      if(raw.version===3 && (!Array.isArray(importedFolders)||importedFolders.length>MAX_FOLDERS||!importedFolders.every(validFolder)))throw Error('폴더 정보가 올바르지 않아.');
+      const foldersById=new Map(folders.map(f=>[f.id,f]));
+      for(const f of importedFolders){if(!foldersById.has(f.id))foldersById.set(f.id,f);}
+      const nextFolders=[...foldersById.values()];if(nextFolders.length>MAX_FOLDERS)throw Error('합칠 폴더가 너무 많아.');
+      const validFolders=new Set(nextFolders.map(f=>f.id));
+      const byId=new Map(courses.map(c=>[c.id,c]));
+      for(const c of raw.courses){if(!byId.has(c.id))byId.set(c.id,{...c,folderId:validFolders.has(c.folderId)?c.folderId:'inbox'});}
+      const next=[...byId.values()];if(next.length>MAX_COURSES)throw Error('합칠 코스가 200개를 넘었어.');
+      if(!confirm('백업 코스 '+raw.courses.length+'개를 현재 보관함에 합칠까? 기존 코스는 유지돼.'))return;
+      if(saveStore(next)&&saveFolders(nextFolders)){renderFolderChips();renderFolderManager();renderList();$('backup-status').textContent='복원 완료 · '+courses.length+'개 코스';}
     }catch(e){$('backup-status').textContent='복원 실패: '+e.message;}
   }
   $('tab-library').addEventListener('click',()=>{renderList();show('library')});
+  $('folder-add').addEventListener('click',addFolder);
+  $('folder-manage').addEventListener('click',()=>{const x=$('folder-manage-panel');x.hidden=!x.hidden;if(!x.hidden)renderFolderManager();});
   $('tab-add').addEventListener('click',()=>show('add'));
   $('add-form').addEventListener('submit',submitCourse);
   $('backup').addEventListener('click',backup);
   $('restore-pick').addEventListener('click',()=>$('restore-file').click());
   $('restore-file').addEventListener('change',restore);
-  courses=getStore();renderList();receiveLink();show('library');
+  folders=getFolders();courses=getStore();renderFolderChips();renderList();if(!readShared())receiveLink();show('library');
   if(!window.Kakao){sdkError='카카오 SDK를 불러오지 못했어.';}else{try{if(!Kakao.isInitialized())Kakao.init(JAVASCRIPT_KEY);}catch(e){sdkError=e.message;}}
   if(sdkError)toast('SDK 연결 주의: '+sdkError);
 })();
