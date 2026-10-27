@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#101927">
+  <title>BRC · 카카오내비 연동 테스트</title>
+  <style>
+    :root { color-scheme: dark; font-family: -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin:0; color:#f4f7fc; background:linear-gradient(155deg,#14283c 0%,#0b101c 75%); min-height:100dvh; }
+    main { max-width:620px; margin:0 auto; padding:clamp(24px,6vw,44px) 22px 60px; }
+    .brand {display:flex; align-items:center; gap:12px; font-size:14px; letter-spacing:.14em; font-weight:800; color:#bed6e7; }
+    .logo {display:grid;place-items:center; width:46px;height:46px;border-radius:14px; background:#ffca49;color:#191919;font-size:15px;letter-spacing:-.06em;}
+    h1 {font-size:clamp(30px,7vw,44px);line-height:1.21;letter-spacing:-.04em;margin:36px 0 12px;}
+    .sub {color:#b7c7d7;font-size:15px;line-height:1.75;margin:0 0 28px;}
+    .panel {background:#1b2b3d;border:1px solid #365069;border-radius:22px;padding:24px;box-shadow:0 12px 32px #07101b80;}
+    .eyebrow {font-size:12px;font-weight:800;letter-spacing:.1em;color:#ffcf66;margin:0 0 8px;}
+    h2{font-size:22px;margin:0 0 13px;letter-spacing:-.03em;}
+    .meta {line-height:1.8;color:#cad8e4;font-size:14px;margin:0 0 24px;}
+    .meta strong {color:#fff;}
+    button {width:100%;padding:17px 14px;background:#ffca49;color:#141414;font:800 17px inherit;border:0;border-radius:14px;cursor:pointer;}
+    button:active{transform:translateY(1px)}
+    .status{min-height:1.6em;margin:17px 0 0;font-size:13px;line-height:1.5;color:#c5d5e0;}
+    .info{font-size:14px;line-height:1.75;color:#aebfcf;padding:18px 3px 0;}
+    .flag {color:#ffca49; font-weight:700;}
+    footer{font-size:12px;color:#849caf;margin-top:30px;line-height:1.7;}
+  </style>
+  <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.8.4/kakao.min.js" integrity="sha384-BGX7Wb16GmRFagri4bLJV2DgipVZaU2AI812GZtHtHzzDQJnfHasDXN5houxv45w" crossorigin="anonymous"></script>
+</head>
+<body>
+<main>
+  <div class="brand"><div class="logo">BRC</div><span>BIKE RIDING COURSE</span></div>
+  <h1>카카오내비<br>연동 테스트</h1>
+  <p class="sub">이 페이지에서 아이폰 카카오내비 앱으로 목적지와 이륜차 경로 설정을 전달할 수 있는지 확인해.</p>
+  <section class="panel">
+    <p class="eyebrow">TEST 001 · 공식 문서 예제 좌표</p>
+    <h2>현대백화점 판교점</h2>
+    <p class="meta"><strong>테스트 목적지</strong> · 실제 라이딩 코스 아님<br>
+       <strong>차종</strong> · 이륜차 (vehicleType 7)<br>
+       <strong>경로 설정</strong> · 자동차전용도로 제외 (rpOption 4)</p>
+    <button type="button" id="start">카카오내비 실행 테스트</button>
+    <p class="status" id="status" role="status" aria-live="polite">아이폰 Safari에서 실행해줘.</p>
+  </section>
+  <p class="info"><span class="flag">참고</span> · 이 테스트는 공식 예제 목적지 1개만 전달해. 기존 양평·여주·이천 순환 코스는 이륜차 통행 및 경유지 진출입 검증이 끝나지 않아 아직 넣지 않았어. 앱이 실행되더라도 실제 주행을 시작할 필요는 없어.</p>
+  <footer>카카오내비 SDK 2.8.4 · BRC 개인용 테스트 페이지<br>출발 위치는 카카오내비에서 현재 위치 기준으로 계산돼.</footer>
+</main>
+<script>
+  const status = document.getElementById('status');
+  const JAVASCRIPT_KEY = 'f90a30d2e1bb638937cc65b42660704d';
+  try {
+    if (!window.Kakao) throw new Error('카카오 SDK를 불러오지 못했어. 인터넷 연결을 확인해줘.');
+    if (!Kakao.isInitialized()) Kakao.init(JAVASCRIPT_KEY);
+    status.textContent = 'SDK 준비 완료. 버튼을 누르면 카카오내비를 실행해.';
+  } catch (err) {
+    status.textContent = '초기화 오류: ' + (err?.message || String(err));
+  }
+  document.getElementById('start').addEventListener('click', () => {
+    try {
+      if (!window.Kakao || !Kakao.isInitialized()) throw new Error('SDK 초기화 상태를 확인해줘.');
+      status.textContent = '카카오내비 실행 요청 중…';
+      Kakao.Navi.start({
+        name: '현대백화점 판교점',
+        x: 127.11205203011632,
+        y: 37.39279717586919,
+        coordType: 'wgs84',
+        vehicleType: 7,
+        rpOption: 4,
+        routeInfo: true
+      });
+    } catch (err) {
+      status.textContent = '실행 오류: ' + (err?.message || String(err));
+    }
+  });
+</script>
+</body>
+</html>
